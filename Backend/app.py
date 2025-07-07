@@ -2,8 +2,14 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from db import SessionLocal, engine, Base
+from models.base import SessionLocal, engine, Base
 from models.login import Login
+from models.class_model import Class
+from models.student import Student
+from models.organization import Organization
+from models.department import Department
+from models.staff import Staff
+
 from auth import hash_password, verify_password, create_access_token
 
 app = FastAPI(title="Auth API")

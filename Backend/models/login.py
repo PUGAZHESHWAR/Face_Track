@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Text
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
-from db import Base
+from models.base import Base
 
 class Login(Base):
     __tablename__ = "login"
