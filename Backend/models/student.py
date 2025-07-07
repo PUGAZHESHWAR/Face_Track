@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Text, Date, ForeignKey, UUID
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 import uuid
-from models.base import Base
+from db import Base
 
 class Student(Base):
     __tablename__ = 'students'

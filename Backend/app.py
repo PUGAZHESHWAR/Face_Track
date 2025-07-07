@@ -1,34 +1,61 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from models.base import Base
-from models.student import Student
-from models.staff import Staff
-from models.department import Department
-from models.class_model import Class
-from models.organization import Organization
-from dotenv import load_dotenv
-import os
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from db import SessionLocal, engine, Base
+from models.login import Login
+from auth import hash_password, verify_password, create_access_token
 
-# Load variables from .env file
-load_dotenv()
+app = FastAPI(title="Auth API")
 
-# Access individual variables
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
+Base.metadata.create_all(bind=engine)
 
-# Check for missing values
-if not all([DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD]):
-    raise ValueError("One or more environment variables are missing")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# Build the DATABASE_URL
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-engine = create_engine(DATABASE_URL)
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-# Create all tables
-Base.metadata.create_all(engine)
+class UserCreate(BaseModel):
+    name: str
+    email: str
+    password: str
 
-Session = sessionmaker(bind=engine)
-session = Session()
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+# REGISTER
+@app.post("/register")
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    existing = db.query(Login).filter(Login.email == user.email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    new_user = Login(
+        name=user.name,
+        email=user.email,
+        password=hash_password(user.password)
+    )
+    db.add(new_user)
+    db.commit()
+    return {"message": "User registered successfully"}
+
+# LOGIN
+@app.post("/login", response_model=Token)
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(Login).filter(Login.email == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    access_token = create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# PROTECTED ROUTE
+@app.get("/protected")
+def protected_route(token: str = Depends(oauth2_scheme)):
+    return {"message": "Access granted", "token": token}
