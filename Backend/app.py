@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from fastapi.middleware.cors import CORSMiddleware
 from models.base import SessionLocal, engine, Base
 from models.login import Login
 from models.class_model import Class
@@ -13,6 +14,20 @@ from models.staff import Staff
 from auth import hash_password, verify_password, create_access_token
 
 app = FastAPI(title="Auth API")
+origins = [
+    "http://localhost:5173", 
+    "http://127.0.0.1:5173",
+    "https://nill.com",
+    "*" 
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,              # Allowed origins
+    allow_credentials=True,             # Send cookies/auth headers
+    allow_methods=["*"],                # Allow all HTTP methods
+    allow_headers=["*"],                # Allow all headers
+)
 
 Base.metadata.create_all(bind=engine)
 

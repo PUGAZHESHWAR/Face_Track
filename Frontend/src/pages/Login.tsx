@@ -24,10 +24,7 @@ const Login: React.FC = () => {
 
     try {
       if (isSignUp) {
-        await signUp(email, password, {
-          full_name: fullName,
-          role: 'admin',
-        });
+        await signUp(fullName,email,password);
         toast.success('Account created successfully!');
       } else {
         await signIn(email, password);

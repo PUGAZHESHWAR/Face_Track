@@ -1,6 +1,7 @@
 // src/context/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import api from '../context/api' 
+import axios from 'axios';
 
 interface User {
   id: string;
@@ -13,7 +14,7 @@ interface AuthContextType {
   userProfile: any;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, userData: any) => Promise<void>;
+  signUp: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (data: any) => Promise<void>;
 }
@@ -57,20 +58,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, userData: any) => {
+
+  const signUp = async (name: string, email: string, password: string) => {
     try {
       const res = await api.post('/register', {
+        name,      // Not full_name
         email,
         password,
-        ...userData,
       });
       const user = res.data.user;
       setUser(user);
     } catch (err) {
-      console.error('Signup failed:', err);
+      if (axios.isAxiosError(err)) {
+        console.error('Signup failed:', err.response?.data || err.message);
+      } else {
+        console.error('Unexpected error:', err);
+      }
       throw err;
     }
   };
+
+
 
   const signOut = async () => {
     try {
