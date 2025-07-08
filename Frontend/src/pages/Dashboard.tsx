@@ -26,8 +26,7 @@ const Dashboard: React.FC = () => {
 
     try {
         setLoading(true);
-
-        const res = await api.get('/api/dashboard/${currentOrganization.id}');
+        const res = await api.get(`/api/dashboard/${currentOrganization.id}`);
         const data = await res.data;
 
         setStats({

@@ -13,6 +13,7 @@ from models.department import Department
 from models.staff import Staff
 from typing import List
 from datetime import date
+from typing import Optional
 
 from auth import hash_password, verify_password, create_access_token
 
@@ -77,6 +78,16 @@ class OrganizationResponse(BaseModel):
 
     class Config:
         orm_mode = True
+class OrganizationCreate(BaseModel):
+    name: str
+    address: Optional[str] = None
+    contact: Optional[str] = None
+
+class OrganizationUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    contact: Optional[str] = None
+    created_at: Optional[date] = None
 
 # REGISTER
 @app.post("/register")
@@ -131,7 +142,41 @@ def get_dashboard_data(org_id: UUID, db: Session = Depends(get_db)):
         "departmentData": department_data,
     }
 
-@app.get("/api/organizations", response_model=List[OrganizationResponse])
+@app.get("/organizations", response_model=List[OrganizationResponse])
 def get_organizations(db: Session = Depends(get_db)):
     orgs = db.query(Organization).order_by(Organization.created_at.desc()).all()
     return orgs
+
+# POST: Create a new organization
+@app.post("/organizations", response_model=OrganizationResponse)
+def create_organization(payload: OrganizationCreate, db: Session = Depends(get_db)):
+    org = Organization(**payload.dict())
+    db.add(org)
+    db.commit()
+    db.refresh(org)
+    return org
+
+# PUT: Update organization by ID
+@app.put("/organizations/{org_id}", response_model=OrganizationResponse)
+def update_organization(org_id: UUID, payload: OrganizationUpdate, db: Session = Depends(get_db)):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    for key, value in payload.dict(exclude_unset=True).items():
+        setattr(org, key, value)
+
+    db.commit()
+    db.refresh(org)
+    return org
+
+# DELETE: Delete organization by ID
+@app.delete("/organizations/{org_id}")
+def delete_organization(org_id: UUID, db: Session = Depends(get_db)):
+    org = db.query(Organization).filter(Organization.id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    db.delete(org)
+    db.commit()
+    return {"detail": "Organization deleted successfully"}

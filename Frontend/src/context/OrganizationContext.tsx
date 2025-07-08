@@ -47,8 +47,10 @@ export const OrganizationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const fetchOrganizations = async () => {
     try {
       setLoading(true);
-      const res = await api.get<Organization[]>('/api/organizations');
+      const res = await api.get<Organization[]>('/organizations');
       const data = res.data;
+      // console.log('Fetched organizations:', data);
+      // console.log('Current organizations:', currentOrganization);
 
       setOrganizations(data);
 
