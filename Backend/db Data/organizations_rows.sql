@@ -1,0 +1,3 @@
+INSERT INTO "public"."organizations" ("id", "name", "address", "contact", "created_at") VALUES ('0b7fa75f-13a0-4c89-81c2-4825ad2b7d85', 'Arunai Medical College', 'Velu Nagar,
+Tiruvannamalai 606 601', '8347395829', '2025-06-09 13:46:25.36118+00'), ('cfbe336a-8864-4a94-acdb-8692cd033e37', 'Arunai Engineering College', 'Velu Nagar,
+Tiruvannamalai 606 601', '9385738472', '2025-06-09 13:43:50.316603+00');

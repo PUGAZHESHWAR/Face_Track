@@ -6,7 +6,7 @@ import { OrganizationProvider } from './context/OrganizationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout/Layout';
 import Login from './pages/Login';
-// import Dashboard from './pages/Dashboard';
+import Dashboard from './pages/Dashboard';
 // import Organizations from './pages/Organizations';
 // import Students from './pages/Students';
 // import Staff from './pages/Staff';
@@ -56,8 +56,8 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-                {/* <Route path="dashboard" element={<Dashboard />} />
-                <Route path="organizations" element={<Organizations />} />
+               <Route path="dashboard" element={<Dashboard />} />
+                {/*  <Route path="organizations" element={<Organizations />} />
                 <Route path="students" element={<Students />} />
                 <Route path="staff" element={<Staff />} />
                 <Route path="departments" element={<Departments />} />

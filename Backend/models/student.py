@@ -5,8 +5,8 @@ from models.base import Base
 
 class Student(Base):
     __tablename__ = 'students'
-
-    roll_number = Column(Text, primary_key=True)
+    id = Column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    roll_number = Column(Text,nullable=False)
     full_name = Column(Text, nullable=False)
     email = Column(Text, nullable=False, unique=True)
     phone = Column(Text)

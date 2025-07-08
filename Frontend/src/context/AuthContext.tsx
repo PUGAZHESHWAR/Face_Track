@@ -45,10 +45,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       const res = await api.post('/login', { email, password });
-      const { user, token } = res.data;
-
-      setUser(user);
-      localStorage.setItem('token', token);
+      const { user, token ,access_token} = res.data;
+      console.log('Login successful:', access_token);
+      setUser(access_token);
+      localStorage.setItem('token', access_token);
 
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       await fetchUserProfile();

@@ -31,7 +31,7 @@ const Login: React.FC = () => {
         toast.success('Signed in successfully!');
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || error.message || 'An error occurred');
+      toast.error(error?.response?.data?.detail || error.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
