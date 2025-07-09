@@ -147,7 +147,6 @@ def get_organizations(db: Session = Depends(get_db)):
     orgs = db.query(Organization).order_by(Organization.created_at.desc()).all()
     return orgs
 
-# POST: Create a new organization
 @app.post("/organizations", response_model=OrganizationResponse)
 def create_organization(payload: OrganizationCreate, db: Session = Depends(get_db)):
     org = Organization(**payload.dict())
@@ -156,7 +155,6 @@ def create_organization(payload: OrganizationCreate, db: Session = Depends(get_d
     db.refresh(org)
     return org
 
-# PUT: Update organization by ID
 @app.put("/organizations/{org_id}", response_model=OrganizationResponse)
 def update_organization(org_id: UUID, payload: OrganizationUpdate, db: Session = Depends(get_db)):
     org = db.query(Organization).filter(Organization.id == org_id).first()
@@ -170,7 +168,6 @@ def update_organization(org_id: UUID, payload: OrganizationUpdate, db: Session =
     db.refresh(org)
     return org
 
-# DELETE: Delete organization by ID
 @app.delete("/organizations/{org_id}")
 def delete_organization(org_id: UUID, db: Session = Depends(get_db)):
     org = db.query(Organization).filter(Organization.id == org_id).first()
