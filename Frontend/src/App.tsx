@@ -10,7 +10,7 @@ import Dashboard from './pages/Dashboard';
 import Organizations from './pages/Organizations';
 import Students from './pages/Students';
 import Staff from './pages/Staff';
-// import Departments from './pages/Departments';
+import Departments from './pages/Departments';
 // import Classes from './pages/Classes';
 // import FaceRecognition from './pages/FaceRecognition';
 import Settings from './pages/Settings';
@@ -60,8 +60,8 @@ function App() {
                 <Route path="organizations" element={<Organizations />} />
                 <Route path="students" element={<Students />} />
                 <Route path="staff" element={<Staff />} />
-                  {/*      <Route path="departments" element={<Departments />} />
-                <Route path="classes" element={<Classes />} />
+                <Route path="departments" element={<Departments />} />
+                {/*     <Route path="classes" element={<Classes />} />
                 <Route path="face-recognition" element={<FaceRecognition />} />*/}
                 <Route path="settings" element={<Settings />} /> 
                 <Route path="" element={<Navigate to="/dashboard\" replace />} />

@@ -15,6 +15,7 @@ from typing import List
 from datetime import date
 from typing import Optional
 from datetime import datetime
+from sqlalchemy.exc import IntegrityError
 
 from auth import hash_password, verify_password, create_access_token
 
@@ -195,6 +196,26 @@ class StaffOut(StaffBase):
     id: UUID
     class Config:
         orm_mode = True
+        
+class DepartmentBase(BaseModel):
+    name: str
+    code: Optional[str] = None
+    description: Optional[str] = None
+    head_of_department: Optional[str] = None
+    organization_id: UUID
+
+class DepartmentCreate(DepartmentBase):
+    pass
+
+class DepartmentUpdate(DepartmentBase):
+    pass
+
+class DepartmentOut(DepartmentBase):
+    id: UUID
+    created_at: Optional[date]
+
+    class Config:
+        orm_mode = True
 
 # REGISTER
 @app.post("/register")
@@ -358,3 +379,46 @@ def delete_staff(staff_id: UUID, db: Session = Depends(get_db)):
     db.delete(db_staff)
     db.commit()
     return {"message": "Deleted successfully"}
+
+@app.get("{organization_id}", response_model=List[DepartmentOut])
+def get_departments(organization_id: UUID, db: Session = Depends(get_db)):
+    return db.query(Department).filter(Department.organization_id == organization_id).all()
+
+@app.post("/api/departments/", response_model=DepartmentOut)
+def create_department(dept: DepartmentCreate, db: Session = Depends(get_db)):
+    new_dept = Department(**dept.dict())
+    db.add(new_dept)
+    db.commit()
+    db.refresh(new_dept)
+    return new_dept
+
+@app.put("/api/departments/{department_id}", response_model=DepartmentOut)
+def update_department(department_id: UUID, dept_data: DepartmentUpdate, db: Session = Depends(get_db)):
+    dept = db.query(Department).filter(Department.id == department_id).first()
+    if not dept:
+        raise HTTPException(status_code=404, detail="Department not found")
+    
+    for key, value in dept_data.dict(exclude_unset=True).items():
+        setattr(dept, key, value)
+
+    db.commit()
+    db.refresh(dept)
+    return dept
+
+@app.delete("/api/departments/{department_id}")
+def delete_department(department_id: UUID, db: Session = Depends(get_db)):
+    department = db.query(Department).filter(Department.id == department_id).first()
+    if not department:
+        raise HTTPException(status_code=404, detail="Department not found")
+
+    try:
+        db.delete(department)
+        db.commit()
+        return {"message": "Department deleted successfully"}
+    
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Department is still referenced by other records (e.g., classes)."
+        )
