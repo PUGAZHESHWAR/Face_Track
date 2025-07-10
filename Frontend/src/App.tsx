@@ -8,12 +8,12 @@ import Layout from './components/Layout/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Organizations from './pages/Organizations';
-// import Students from './pages/Students';
-// import Staff from './pages/Staff';
-// import Departments from './pages/Departments';
-// import Classes from './pages/Classes';
-// import FaceRecognition from './pages/FaceRecognition';
-// import Settings from './pages/Settings';
+import Students from './pages/Students';
+import Staff from './pages/Staff';
+import Departments from './pages/Departments';
+import Classes from './pages/Classes';
+import FaceRecognition from './pages/FaceRecognition';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -56,14 +56,14 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="organizations" element={<Organizations />} />
-                {/*  <Route path="students" element={<Students />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="organizations" element={<Organizations />} />
+                <Route path="students" element={<Students />} />
                 <Route path="staff" element={<Staff />} />
                 <Route path="departments" element={<Departments />} />
                 <Route path="classes" element={<Classes />} />
                 <Route path="face-recognition" element={<FaceRecognition />} />
-                <Route path="settings" element={<Settings />} /> */}
+                <Route path="settings" element={<Settings />} /> 
                 <Route path="" element={<Navigate to="/dashboard\" replace />} />
               </Route>
             </Routes>

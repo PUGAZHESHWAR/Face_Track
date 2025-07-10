@@ -1,9 +1,10 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from uuid import UUID
+from fastapi.responses import JSONResponse
 from models.base import SessionLocal, engine, Base
 from models.login import Login
 from models.class_model import Class
@@ -14,6 +15,15 @@ from models.staff import Staff
 from typing import List
 from datetime import date
 from typing import Optional
+from datetime import datetime
+from sqlalchemy.exc import IntegrityError
+import base64
+import cv2
+import numpy as np
+import face_recognition
+import json
+import os
+import logging
 
 from auth import hash_password, verify_password, create_access_token
 
@@ -24,6 +34,7 @@ origins = [
     "https://nill.com",
     "*" 
 ]
+logger = logging.getLogger("uvicorn.error")
 
 app.add_middleware(
     CORSMiddleware,
@@ -74,7 +85,7 @@ class OrganizationResponse(BaseModel):
     name: str
     address: str | None = None
     contact: str | None = None
-    created_at: date
+    created_at: datetime
 
     class Config:
         orm_mode = True
@@ -87,6 +98,148 @@ class OrganizationUpdate(BaseModel):
     name: Optional[str] = None
     address: Optional[str] = None
     contact: Optional[str] = None
+    created_at: Optional[date] = None
+    
+class StudentCreate(BaseModel):
+    roll_number: str
+    full_name: str
+    email: str
+    phone: Optional[str]
+    address: Optional[str]
+    course: Optional[str]
+    semester: Optional[str]
+    gender: Optional[str]
+    date_of_birth: Optional[date]
+    department_id: UUID
+    class_id: UUID
+    organization_id: UUID
+
+class StudentUpdate(BaseModel):
+    roll_number: Optional[str]
+    full_name: Optional[str]
+    email: Optional[str]
+    phone: Optional[str]
+    department_id: Optional[UUID]
+    class_id: Optional[UUID]
+    semester: Optional[str]
+    course: Optional[str]
+    address: Optional[str]
+    date_of_birth: Optional[date]
+    gender: Optional[str]
+    organization_id: Optional[UUID]
+
+    class Config:
+        orm_mode = True
+
+class StudentOut(BaseModel):
+    id: UUID
+    roll_number: str
+    full_name: str
+    email: str
+    phone: Optional[str]
+    department_id: Optional[UUID]
+    class_id: Optional[UUID]
+    semester: Optional[str]
+    course: Optional[str]
+    address: Optional[str]
+    date_of_birth: Optional[date]
+    gender: Optional[str]
+    created_at: Optional[date]
+    organization_id: UUID
+
+    # # Nested relationships
+    # departments: Optional[DepartmentOut]
+    # classes: Optional[ClassOut]
+
+    class Config:
+        orm_mode = True
+        
+class DepartmentOut(BaseModel):
+    id: UUID
+    name: str
+
+    class Config:
+        orm_mode = True
+
+class ClassOut(BaseModel):
+    id: UUID
+    name: str
+
+    class Config:
+        orm_mode = True
+        
+class StaffBase(BaseModel):
+    employee_id: str
+    full_name: str
+    email: str
+    phone: Optional[str] = None
+    department_id: Optional[UUID] = None
+    role: Optional[str] = None
+    designation: Optional[str] = None
+    qualification: Optional[str] = None
+    experience: Optional[float] = None
+    address: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+    joining_date: Optional[date] = None
+    organization_id: UUID
+
+class StaffCreate(StaffBase):
+    pass
+
+class StaffUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    department_id: Optional[UUID] = None
+    role: Optional[str] = None
+    designation: Optional[str] = None
+    qualification: Optional[str] = None
+    experience: Optional[float] = None
+    address: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+    joining_date: Optional[date] = None
+
+class StaffOut(StaffBase):
+    id: UUID
+    class Config:
+        orm_mode = True
+        
+class DepartmentBase(BaseModel):
+    name: str
+    code: Optional[str] = None
+    description: Optional[str] = None
+    head_of_department: Optional[str] = None
+    organization_id: UUID
+
+class DepartmentCreate(DepartmentBase):
+    pass
+
+class DepartmentUpdate(DepartmentBase):
+    pass
+
+class DepartmentOut(DepartmentBase):
+    id: UUID
+    created_at: Optional[date]
+
+    class Config:
+        orm_mode = True
+        
+class ClassCreate(BaseModel):
+    name: str
+    code: Optional[str] = None
+    department_id: UUID
+    semester: Optional[str] = None
+    section: Optional[str] = None
+    academic_year: Optional[str] = None
+    capacity: Optional[int] = None
+    description: Optional[str] = None
+    organization_id: UUID
+
+
+class ClassOut(ClassCreate):
+    id: UUID
     created_at: Optional[date] = None
 
 # REGISTER
@@ -147,7 +300,6 @@ def get_organizations(db: Session = Depends(get_db)):
     orgs = db.query(Organization).order_by(Organization.created_at.desc()).all()
     return orgs
 
-# POST: Create a new organization
 @app.post("/organizations", response_model=OrganizationResponse)
 def create_organization(payload: OrganizationCreate, db: Session = Depends(get_db)):
     org = Organization(**payload.dict())
@@ -156,7 +308,6 @@ def create_organization(payload: OrganizationCreate, db: Session = Depends(get_d
     db.refresh(org)
     return org
 
-# PUT: Update organization by ID
 @app.put("/organizations/{org_id}", response_model=OrganizationResponse)
 def update_organization(org_id: UUID, payload: OrganizationUpdate, db: Session = Depends(get_db)):
     org = db.query(Organization).filter(Organization.id == org_id).first()
@@ -170,7 +321,6 @@ def update_organization(org_id: UUID, payload: OrganizationUpdate, db: Session =
     db.refresh(org)
     return org
 
-# DELETE: Delete organization by ID
 @app.delete("/organizations/{org_id}")
 def delete_organization(org_id: UUID, db: Session = Depends(get_db)):
     org = db.query(Organization).filter(Organization.id == org_id).first()
@@ -180,3 +330,256 @@ def delete_organization(org_id: UUID, db: Session = Depends(get_db)):
     db.delete(org)
     db.commit()
     return {"detail": "Organization deleted successfully"}
+
+@app.get("/api/students/{organization_id}", response_model=List[StudentOut])
+def get_students_by_org(organization_id: UUID, db: Session = Depends(get_db)):
+    return db.query(Student).filter(Student.organization_id == organization_id).all()
+
+@app.post("/api/students", response_model=StudentOut)
+def create_student(student: StudentCreate, db: Session = Depends(get_db)):
+    student_dict = student.dict()
+    student_dict["created_at"] = datetime.utcnow().date()
+    db_student = Student(**student_dict)
+    db.add(db_student)
+    db.commit()
+    db.refresh(db_student)
+    return db_student
+
+@app.put("/api/students/{student_id}", response_model=StudentOut)
+def update_student(student_id: UUID, update: StudentUpdate, db: Session = Depends(get_db)):
+    print(f"Updating student with ID: {student_id} with data: {update.dict()}")
+    db_student = db.query(Student).filter(Student.id == student_id).first()
+    if not db_student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    for key, value in update.dict(exclude_unset=True).items():
+        setattr(db_student, key, value)
+    db.commit()
+    db.refresh(db_student)
+    return db_student
+
+@app.delete("/api/students/{student_id}")
+def delete_student(student_id: UUID, db: Session = Depends(get_db)):
+    db_student = db.query(Student).filter(Student.id == student_id).first()
+    if not db_student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    db.delete(db_student)
+    db.commit()
+    return {"message": "Student deleted"}
+
+@app.get("/api/departments/{organization_id}", response_model=List[DepartmentOut])
+def get_departments(organization_id: UUID, db: Session = Depends(get_db)):
+    return db.query(Department).filter(Department.organization_id == organization_id).all()
+
+@app.get("/api/classes/{organization_id}", response_model=List[ClassOut])
+def get_classes(organization_id: UUID, db: Session = Depends(get_db)):
+    return db.query(Class).filter(Class.organization_id == organization_id).all()
+@app.get("/api/staff/{organization_id}", response_model=List[StaffOut])
+def get_staff(organization_id: UUID, db: Session = Depends(get_db)):
+    return db.query(Staff).filter(Staff.organization_id == organization_id).all()
+
+@app.post("/api/staff", response_model=StaffOut)
+def create_staff(staff: StaffCreate, db: Session = Depends(get_db)):
+    db_staff = Staff(**staff.dict())
+    db.add(db_staff)
+    db.commit()
+    db.refresh(db_staff)
+    return db_staff
+
+@app.put("/api/staff/{staff_id}", response_model=StaffOut)
+def update_staff(staff_id: UUID, update: StaffUpdate, db: Session = Depends(get_db)):
+    db_staff = db.query(Staff).filter(Staff.id == staff_id).first()
+    if not db_staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    for key, value in update.dict(exclude_unset=True).items():
+        setattr(db_staff, key, value)
+    db.commit()
+    db.refresh(db_staff)
+    return db_staff
+
+@app.delete("/api/staff/{staff_id}")
+def delete_staff(staff_id: UUID, db: Session = Depends(get_db)):
+    db_staff = db.query(Staff).filter(Staff.id == staff_id).first()
+    if not db_staff:
+        raise HTTPException(status_code=404, detail="Staff not found")
+    db.delete(db_staff)
+    db.commit()
+    return {"message": "Deleted successfully"}
+
+@app.get("{organization_id}", response_model=List[DepartmentOut])
+def get_departments(organization_id: UUID, db: Session = Depends(get_db)):
+    return db.query(Department).filter(Department.organization_id == organization_id).all()
+
+@app.post("/api/departments/", response_model=DepartmentOut)
+def create_department(dept: DepartmentCreate, db: Session = Depends(get_db)):
+    new_dept = Department(**dept.dict())
+    db.add(new_dept)
+    db.commit()
+    db.refresh(new_dept)
+    return new_dept
+
+@app.put("/api/departments/{department_id}", response_model=DepartmentOut)
+def update_department(department_id: UUID, dept_data: DepartmentUpdate, db: Session = Depends(get_db)):
+    dept = db.query(Department).filter(Department.id == department_id).first()
+    if not dept:
+        raise HTTPException(status_code=404, detail="Department not found")
+    
+    for key, value in dept_data.dict(exclude_unset=True).items():
+        setattr(dept, key, value)
+
+    db.commit()
+    db.refresh(dept)
+    return dept
+
+@app.delete("/api/departments/{department_id}")
+def delete_department(department_id: UUID, db: Session = Depends(get_db)):
+    department = db.query(Department).filter(Department.id == department_id).first()
+    if not department:
+        raise HTTPException(status_code=404, detail="Department not found")
+
+    try:
+        db.delete(department)
+        db.commit()
+        return {"message": "Department deleted successfully"}
+    
+    except IntegrityError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Department is still referenced by other records (e.g., classes)."
+        )
+
+@app.get("/api/classes/{organization_id}", response_model=List[ClassOut])
+def get_classes(organization_id: UUID, db: Session = Depends(get_db)):
+    return db.query(Class).filter(Class.organization_id == organization_id).all()
+
+
+@app.post("/api/classes/", response_model=ClassOut)
+def create_class(data: ClassCreate, db: Session = Depends(get_db)):
+    new_class = Class(**data.dict())
+    db.add(new_class)
+    db.commit()
+    db.refresh(new_class)
+    return new_class
+
+
+@app.put("/api/classes/{class_id}", response_model=ClassOut)
+def update_class(class_id: UUID, data: ClassCreate, db: Session = Depends(get_db)):
+    class_item = db.query(Class).filter(Class.id == class_id).first()
+    if not class_item:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    for key, value in data.dict().items():
+        setattr(class_item, key, value)
+
+    db.commit()
+    db.refresh(class_item)
+    return class_item
+
+
+@app.delete("/api/classes/{class_id}")
+def delete_class(class_id: UUID, db: Session = Depends(get_db)):
+    class_item = db.query(Class).filter(Class.id == class_id).first()
+    if not class_item:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    try:
+        db.delete(class_item)
+        db.commit()
+        return {"message": "Class deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to delete class. Possibly referenced elsewhere.")
+    
+@app.get("/students/by-roll/{roll_number}")
+def get_student_by_roll(roll_number: str, db: Session = Depends(get_db)):
+    student = db.query(Student).filter(Student.roll_number == roll_number).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    return {
+        "id": student.roll_number,
+        "name": student.full_name,
+        "type": "student",
+        "department": student.course,
+        "class": student.semester,
+        "gender": student.gender,
+        "email": student.email,
+        "phone": student.phone,
+        "dob": student.date_of_birth,
+        "address": student.address,
+    }
+    
+# Load known encodings from file (assumed format: { "stu_123": [[enc1], [enc2], ...], ... })
+with open("face-images/face_registry.json", "r") as f:
+    data_dict = json.load(f)
+
+class FaceRequest(BaseModel):
+    image: str  # base64 encoded
+
+@app.post("/api/recognize-face")
+async def recognize_face(request: FaceRequest):
+    try:
+        image_data = request.image
+
+        # Remove base64 prefix if present
+        if "base64," in image_data:
+            image_data = image_data.split("base64,")[1]
+
+        image_bytes = base64.b64decode(image_data)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if img is None:
+            return JSONResponse(content={"error": "Invalid image data"}, status_code=400)
+
+        # Convert to RGB
+        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        # Detect face
+        face_locations = face_recognition.face_locations(rgb_img, model="hog")
+        if not face_locations:
+            return {"status": "no_face", "message": "No face detected"}
+
+        face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
+        if not face_encodings:
+            return {"status": "no_encoding", "message": "Could not encode face"}
+
+        input_encoding = face_encodings[0]
+
+        # Compare with known faces
+        tolerance = 0.5
+        best_match = None
+        best_distance = 1.0
+
+        for registry_key, encodings in data_dict.items():
+            known_encodings = [np.array(enc) for enc in encodings]
+            distances = face_recognition.face_distance(known_encodings, input_encoding)
+            min_distance = min(distances)
+
+            if min_distance < best_distance:
+                best_distance = min_distance
+                best_match = registry_key
+
+        if best_match and best_distance <= tolerance:
+            if best_match.startswith("stu_"):
+                reg_no = best_match[4:]
+                return {
+                    "status": "recognized",
+                    "identifier": reg_no,
+                    "confidence": float(f"{1 - best_distance:.2f}"),
+                    "image_url": f"/face-images/{best_match}.jpg"
+                }
+            else:
+                return {
+                    "status": "recognized",
+                    "identifier": best_match,
+                    "confidence": float(f"{1 - best_distance:.2f}"),
+                    "image_url": f"/face-images/{best_match}.jpg"
+                }
+
+        else:
+            return {"status": "unrecognized", "message": "No matching face in registry"}
+
+    except Exception as e:
+        logger.error(f"Face recognition failed: {str(e)}")
+        return JSONResponse(content={"error": str(e)}, status_code=500)
