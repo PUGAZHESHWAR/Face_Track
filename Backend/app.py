@@ -1,9 +1,10 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from uuid import UUID
+from fastapi.responses import JSONResponse
 from models.base import SessionLocal, engine, Base
 from models.login import Login
 from models.class_model import Class
@@ -16,6 +17,13 @@ from datetime import date
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
+import base64
+import cv2
+import numpy as np
+import face_recognition
+import json
+import os
+import logging
 
 from auth import hash_password, verify_password, create_access_token
 
@@ -26,6 +34,7 @@ origins = [
     "https://nill.com",
     "*" 
 ]
+logger = logging.getLogger("uvicorn.error")
 
 app.add_middleware(
     CORSMiddleware,
@@ -480,3 +489,97 @@ def delete_class(class_id: UUID, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail="Failed to delete class. Possibly referenced elsewhere.")
+    
+@app.get("/students/by-roll/{roll_number}")
+def get_student_by_roll(roll_number: str, db: Session = Depends(get_db)):
+    student = db.query(Student).filter(Student.roll_number == roll_number).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    return {
+        "id": student.roll_number,
+        "name": student.full_name,
+        "type": "student",
+        "department": student.course,
+        "class": student.semester,
+        "gender": student.gender,
+        "email": student.email,
+        "phone": student.phone,
+        "dob": student.date_of_birth,
+        "address": student.address,
+    }
+    
+# Load known encodings from file (assumed format: { "stu_123": [[enc1], [enc2], ...], ... })
+with open("face-images/face_registry.json", "r") as f:
+    data_dict = json.load(f)
+
+class FaceRequest(BaseModel):
+    image: str  # base64 encoded
+
+@app.post("/api/recognize-face")
+async def recognize_face(request: FaceRequest):
+    try:
+        image_data = request.image
+
+        # Remove base64 prefix if present
+        if "base64," in image_data:
+            image_data = image_data.split("base64,")[1]
+
+        image_bytes = base64.b64decode(image_data)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if img is None:
+            return JSONResponse(content={"error": "Invalid image data"}, status_code=400)
+
+        # Convert to RGB
+        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        # Detect face
+        face_locations = face_recognition.face_locations(rgb_img, model="hog")
+        if not face_locations:
+            return {"status": "no_face", "message": "No face detected"}
+
+        face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
+        if not face_encodings:
+            return {"status": "no_encoding", "message": "Could not encode face"}
+
+        input_encoding = face_encodings[0]
+
+        # Compare with known faces
+        tolerance = 0.5
+        best_match = None
+        best_distance = 1.0
+
+        for registry_key, encodings in data_dict.items():
+            known_encodings = [np.array(enc) for enc in encodings]
+            distances = face_recognition.face_distance(known_encodings, input_encoding)
+            min_distance = min(distances)
+
+            if min_distance < best_distance:
+                best_distance = min_distance
+                best_match = registry_key
+
+        if best_match and best_distance <= tolerance:
+            if best_match.startswith("stu_"):
+                reg_no = best_match[4:]
+                return {
+                    "status": "recognized",
+                    "identifier": reg_no,
+                    "confidence": float(f"{1 - best_distance:.2f}"),
+                    "image_url": f"/face-images/{best_match}.jpg"
+                }
+            else:
+                return {
+                    "status": "recognized",
+                    "identifier": best_match,
+                    "confidence": float(f"{1 - best_distance:.2f}"),
+                    "image_url": f"/face-images/{best_match}.jpg"
+                }
+
+        else:
+            return {"status": "unrecognized", "message": "No matching face in registry"}
+
+    except Exception as e:
+        logger.error(f"Face recognition failed: {str(e)}")
+        return JSONResponse(content={"error": str(e)}, status_code=500)
