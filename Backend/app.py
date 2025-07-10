@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Request, UploadFile, File, Form
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -24,6 +24,9 @@ import face_recognition
 import json
 import os
 import logging
+from PIL import Image
+from io import BytesIO
+import re
 
 from auth import hash_password, verify_password, create_access_token
 
@@ -35,6 +38,10 @@ origins = [
     "*" 
 ]
 logger = logging.getLogger("uvicorn.error")
+# Face images directory
+images_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'face-images'))
+os.makedirs(images_path, exist_ok=True)
+face_registry_path = os.path.join(images_path, 'face_registry.json')
 
 app.add_middleware(
     CORSMiddleware,
@@ -583,3 +590,120 @@ async def recognize_face(request: FaceRequest):
     except Exception as e:
         logger.error(f"Face recognition failed: {str(e)}")
         return JSONResponse(content={"error": str(e)}, status_code=500)
+    
+def validate_roll_number(roll_number):
+    """Validate roll number format"""
+    if not roll_number:
+        raise ValueError("Roll number is required")
+    if not isinstance(roll_number, str):
+        raise ValueError("Roll number must be a string")
+    if not roll_number.strip():
+        raise ValueError("Roll number cannot be blank")
+    if not re.match(r'^[a-zA-Z0-9\-_]+$', roll_number):
+        raise ValueError("Roll number contains invalid characters")
+    return roll_number.strip()
+
+def validate_employee_id(employee_id):
+    """Validate employee ID format"""
+    if not employee_id:
+        raise ValueError("Employee ID is required")
+    if not isinstance(employee_id, str):
+        raise ValueError("Employee ID must be a string")
+    if not employee_id.strip():
+        raise ValueError("Employee ID cannot be blank")
+    if not re.match(r'^[a-zA-Z0-9\-_]+$', employee_id):
+        raise ValueError("Employee ID contains invalid characters")
+    return employee_id.strip()
+
+def save_face_data():
+    try:
+        with open(face_registry_path, 'w') as f:
+            json.dump(data_dict, f)
+    except Exception as e:
+        logger.error(f"Error saving face data: {str(e)}")
+
+def process_face_image(image_bytes, identifier):
+    """Process and validate a face image"""
+    try:
+        # Convert bytes to numpy array
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError("Invalid image data")
+        
+        # Convert to RGB (face_recognition uses RGB)
+        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        
+        # Find face locations with multiple methods
+        face_locations = face_recognition.face_locations(rgb_img, model="hog")
+        if not face_locations:
+            face_locations = face_recognition.face_locations(rgb_img, model="cnn")
+        
+        if not face_locations:
+            raise ValueError("No face detected in image")
+        
+        # Get face encodings
+        face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
+        if not face_encodings:
+            raise ValueError("Could not encode face")
+        
+        return face_encodings[0]
+    except Exception as e:
+        logger.error(f"Face processing failed: {str(e)}")
+        raise
+
+@app.post("/api/upload-face")
+async def upload_face(
+    face: UploadFile = File(...),
+    identifier: str = Form(...),
+    id_type: str = Form(...)
+):
+    try:
+        if not face:
+            raise HTTPException(status_code=400, detail="No file part")
+        
+        if id_type == 'student':
+            identifier = validate_roll_number(identifier)
+            prefix = 'stu_'
+        elif id_type == 'staff':
+            identifier = validate_employee_id(identifier)
+            prefix = 'staff_'
+        else:
+            raise HTTPException(status_code=400, detail="Invalid ID type")
+
+        if not identifier:
+            raise HTTPException(status_code=400, detail="Identifier is required")
+
+        contents = await face.read()
+        if not contents:
+            raise HTTPException(status_code=400, detail="No selected file")
+
+        # Process face image
+        face_encoding = process_face_image(contents, identifier)
+
+        # Save with prefixed filename
+        filename = f"{prefix}{identifier}.jpg"
+        filepath = os.path.join(images_path, filename)
+
+        img = Image.open(BytesIO(contents))
+        img.save(filepath, 'JPEG', quality=85, optimize=True)
+
+        # Update registry
+        registry_key = f"{prefix}{identifier}"
+        if registry_key not in data_dict:
+            data_dict[registry_key] = []
+        data_dict[registry_key].append(face_encoding.tolist())
+        save_face_data()
+
+        return {
+            "success": True,
+            "identifier": identifier,
+            "id_type": id_type,
+            "image_path": filename
+        }
+
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        logger.error(f"Upload failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

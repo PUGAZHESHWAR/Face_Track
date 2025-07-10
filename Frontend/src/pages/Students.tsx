@@ -4,8 +4,13 @@ import { useOrganization } from '../context/OrganizationContext';
 import api from '../context/api';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import Webcam from 'react-webcam';
+
 
 const Students: React.FC = () => {
+  const webcamRef = React.useRef<Webcam>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showWebcam, setShowWebcam] = useState(false);
   const { currentOrganization } = useOrganization();
   const [students, setStudents] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
@@ -15,6 +20,7 @@ const Students: React.FC = () => {
   const [editingStudent, setEditingStudent] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
+  
   const [formData, setFormData] = useState({
     roll_number: '',
     full_name: '',
@@ -87,24 +93,59 @@ const Students: React.FC = () => {
       }
   
       // Upload face image if presen
+      // if (faceFile) {
+      //   const formDataObj = new FormData();
+      //   formDataObj.append('face', faceFile);
+      //   formDataObj.append('identifier', formData.roll_number); 
+      //   formDataObj.append('id_type', 'student'); 
+      //   console.log('Submitting with roll number:', formData.roll_number); // Debug log
+  
+      //   const uploadResponse = await fetch('http://localhost:8000/api/upload-face', {
+      //     method: 'POST',
+      //     body: formDataObj,
+      //   });
+        
+      //   if (!uploadResponse.ok) {
+      //     const errorData = await uploadResponse.json();
+      //     console.error('Upload error:', errorData); // Debug log
+      //     throw new Error(errorData.error || 'Face image upload failed');
+      //   }
+      // }
+
+      // if (faceFile) {
+      //   const formDataObj = new FormData();
+      //   formDataObj.append('face', faceFile);
+      //   formDataObj.append('identifier', formData.roll_number); // 🎯 Student Roll No
+      //   formDataObj.append('id_type', 'student');
+
+      //   const uploadResponse = await fetch('http://localhost:8000/api/upload-face', {
+      //     method: 'POST',
+      //     body: formDataObj,
+      //   });
+
+      //   if (!uploadResponse.ok) {
+      //     const errorData = await uploadResponse.json();
+      //     throw new Error(errorData.error || 'Face image upload failed');
+      //   }
+      // }
+
       if (faceFile) {
         const formDataObj = new FormData();
         formDataObj.append('face', faceFile);
-        formDataObj.append('identifier', formData.roll_number); 
-        formDataObj.append('id_type', 'student'); 
-        console.log('Submitting with roll number:', formData.roll_number); // Debug log
-  
-        const uploadResponse = await fetch('http://localhost:5000/api/upload-face', {
+        formDataObj.append('identifier', formData.roll_number); // for students
+        formDataObj.append('id_type', 'student');
+
+        const uploadResponse = await fetch('http://localhost:8000/api/upload-face', {
           method: 'POST',
           body: formDataObj,
         });
-        
+
         if (!uploadResponse.ok) {
           const errorData = await uploadResponse.json();
-          console.error('Upload error:', errorData); // Debug log
           throw new Error(errorData.error || 'Face image upload failed');
         }
       }
+
   
       // Then save student data
       const studentData = {
@@ -508,6 +549,70 @@ const Students: React.FC = () => {
                     onChange={e => setFaceFile(e.target.files?.[0] || null)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
+
+                    {/* 👇 Show the file name if faceFile is present */}
+                    {faceFile && (
+                      <p className="mt-1 text-sm text-green-600">
+                        Selected File: <strong>{faceFile.name}</strong>
+                      </p>
+                    )}
+                  {/* Webcam Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowWebcam((prev) => !prev)}
+                    className="mt-2 px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+                  >
+                    {showWebcam ? 'Close Webcam' : 'Capture with Webcam'}
+                  </button>
+
+                  {/* Webcam Viewer */}
+                  {showWebcam && (
+                    <div className="mt-2 flex flex-col items-center">
+                      <Webcam
+                        audio={false}
+                        ref={webcamRef}
+                        screenshotFormat="image/jpeg"
+                        width={220}
+                        videoConstraints={{ facingMode: 'user' }}
+                      />
+                    <button
+                      type="button"
+                      className="mt-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                      disabled={isProcessing}
+                      onClick={async () => {
+                        if (!webcamRef.current) return;
+                        setIsProcessing(true);
+                        
+                        const imageSrc = webcamRef.current.getScreenshot();
+
+                        if (imageSrc) {
+                          // 🔁 Convert base64 image to Blob
+                          const res = await fetch(imageSrc);
+                          const blob = await res.blob();
+
+                          // 📦 Create a File object from Blob
+                          const file = new File(
+                            [blob],
+                            `${formData.roll_number || 'student'}_face.jpg`,
+                            { type: 'image/jpeg' }
+                          );
+
+                          // ✅ Set the face file (don't redeclare)
+                          setFaceFile(file);
+
+                          toast.success('Face image captured from webcam');
+                        }
+
+                        setIsProcessing(false);
+                        setShowWebcam(false);
+                      }}
+                    >
+                      {isProcessing ? 'Processing...' : 'Capture Photo'}
+                    </button>
+
+                    </div>
+                  )}
+
                   {faceUploadLoading && <span className="text-xs text-blue-600">Uploading...</span>}
                 </div>
               </div>
