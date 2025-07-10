@@ -216,6 +216,22 @@ class DepartmentOut(DepartmentBase):
 
     class Config:
         orm_mode = True
+        
+class ClassCreate(BaseModel):
+    name: str
+    code: Optional[str] = None
+    department_id: UUID
+    semester: Optional[str] = None
+    section: Optional[str] = None
+    academic_year: Optional[str] = None
+    capacity: Optional[int] = None
+    description: Optional[str] = None
+    organization_id: UUID
+
+
+class ClassOut(ClassCreate):
+    id: UUID
+    created_at: Optional[date] = None
 
 # REGISTER
 @app.post("/register")
@@ -422,3 +438,45 @@ def delete_department(department_id: UUID, db: Session = Depends(get_db)):
             status_code=400,
             detail="Department is still referenced by other records (e.g., classes)."
         )
+
+@app.get("/api/classes/{organization_id}", response_model=List[ClassOut])
+def get_classes(organization_id: UUID, db: Session = Depends(get_db)):
+    return db.query(Class).filter(Class.organization_id == organization_id).all()
+
+
+@app.post("/api/classes/", response_model=ClassOut)
+def create_class(data: ClassCreate, db: Session = Depends(get_db)):
+    new_class = Class(**data.dict())
+    db.add(new_class)
+    db.commit()
+    db.refresh(new_class)
+    return new_class
+
+
+@app.put("/api/classes/{class_id}", response_model=ClassOut)
+def update_class(class_id: UUID, data: ClassCreate, db: Session = Depends(get_db)):
+    class_item = db.query(Class).filter(Class.id == class_id).first()
+    if not class_item:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    for key, value in data.dict().items():
+        setattr(class_item, key, value)
+
+    db.commit()
+    db.refresh(class_item)
+    return class_item
+
+
+@app.delete("/api/classes/{class_id}")
+def delete_class(class_id: UUID, db: Session = Depends(get_db)):
+    class_item = db.query(Class).filter(Class.id == class_id).first()
+    if not class_item:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    try:
+        db.delete(class_item)
+        db.commit()
+        return {"message": "Class deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to delete class. Possibly referenced elsewhere.")
