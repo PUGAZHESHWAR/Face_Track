@@ -27,7 +27,6 @@ import logging
 from PIL import Image
 from io import BytesIO
 import re
-
 from auth import hash_password, verify_password, create_access_token
 
 app = FastAPI(title="Auth API")

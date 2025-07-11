@@ -1,0 +1,26 @@
+# Ignore Python virtual environments
+venv/
+myvenv/
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Ignore git files and folders
+.git
+.gitignore
+
+# Ignore Dockerfile and docker-compose logs
+docker-compose.yml
+*.log
+
+# Ignore IDE/editor folders
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore tests if you want (optional)
+tests/
