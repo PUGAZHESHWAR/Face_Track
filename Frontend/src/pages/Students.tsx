@@ -100,7 +100,7 @@ const Students: React.FC = () => {
       //   formDataObj.append('id_type', 'student'); 
       //   console.log('Submitting with roll number:', formData.roll_number); // Debug log
   
-      //   const uploadResponse = await fetch('http://localhost:8000/api/upload-face', {
+      //   const uploadResponse = await fetch('http://51.21.171.26:8000/api/upload-face', {
       //     method: 'POST',
       //     body: formDataObj,
       //   });
@@ -118,7 +118,7 @@ const Students: React.FC = () => {
       //   formDataObj.append('identifier', formData.roll_number); // 🎯 Student Roll No
       //   formDataObj.append('id_type', 'student');
 
-      //   const uploadResponse = await fetch('http://localhost:8000/api/upload-face', {
+      //   const uploadResponse = await fetch('http://51.21.171.26:8000/api/upload-face', {
       //     method: 'POST',
       //     body: formDataObj,
       //   });
@@ -135,7 +135,7 @@ const Students: React.FC = () => {
         formDataObj.append('identifier', formData.roll_number); // for students
         formDataObj.append('id_type', 'student');
 
-        const uploadResponse = await fetch('http://localhost:8000/api/upload-face', {
+        const uploadResponse = await fetch('http://51.21.171.26:8000/api/upload-face', {
           method: 'POST',
           body: formDataObj,
         });

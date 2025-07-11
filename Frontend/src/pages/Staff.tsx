@@ -79,7 +79,7 @@ const Staff: React.FC = () => {
     
     if (imageSrc) {
       try {
-        const response = await fetch('http://localhost:5000/api/recognize-face', {
+        const response = await fetch('http://51.21.171.26:5000/api/recognize-face', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: imageSrc })
@@ -129,7 +129,7 @@ const Staff: React.FC = () => {
         formDataObj.append('identifier', formData.employee_id);
         formDataObj.append('id_type', 'staff');
 
-        const uploadResponse = await fetch('http://localhost:8000/api/upload-face', {
+        const uploadResponse = await fetch('http://51.21.171.26:8000/api/upload-face', {
             method: 'POST',
             body: formDataObj,
         });
