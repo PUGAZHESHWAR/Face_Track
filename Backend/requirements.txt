@@ -10,7 +10,7 @@ typing
 fastapi==0.115.14
 pydantic==2.5.3
 sqlalchemy==2.0.30
-opencv-python==4.10.0  # cv2 package name is opencv-python
+opencv-python==4.10.0.84  # cv2 package name is opencv-python
 face_recognition==1.2.3
 Pillow==10.3.0          # Pillow is installed as Pillow, imported as PIL
 numpy==1.26.4
