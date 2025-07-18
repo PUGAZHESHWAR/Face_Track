@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Download } from 'lucide-react';
 import { useOrganization } from '../context/OrganizationContext';
 import api from '../context/api';
+import { baseURL } from '../context/api';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import Webcam from 'react-webcam';
@@ -77,7 +78,7 @@ const Students: React.FC = () => {
     formDataObj.append('id_type', 'student');
 
     try {
-      const response = await fetch('http://localhost:8000/api/verify-face', {
+      const response = await fetch(`${baseURL}/api/verify-face`, {
         method: 'POST',
         body: formDataObj,
       });
@@ -109,7 +110,7 @@ const Students: React.FC = () => {
     try {
       updateFaceImage(index, { ...face, status: 'uploading', message: 'Uploading...' });
 
-      const response = await fetch('http://localhost:8000/api/upload-face', {
+      const response = await fetch(`${baseURL}/api/upload-face`, {
         method: 'POST',
         body: formDataObj,
       });
@@ -229,7 +230,7 @@ const Students: React.FC = () => {
         formDataObj.append('identifier', formData.roll_number); // for students
         formDataObj.append('id_type', 'student');
 
-        const uploadResponse = await fetch('http://localhost:8000/api/upload-face', {
+        const uploadResponse = await fetch(`${baseURL}/api/upload-face`, {
           method: 'POST',
           body: formDataObj,
         });
