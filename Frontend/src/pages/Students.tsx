@@ -37,6 +37,100 @@ const Students: React.FC = () => {
   const [faceFile, setFaceFile] = useState<File | null>(null);
   const [faceUploadLoading, setFaceUploadLoading] = useState(false);
 
+  // Add at top
+  type FaceImageState = {
+    file: File | null;
+    status: 'idle' | 'verified' | 'unverified' | 'uploading' | 'error';
+    message: string;
+  };
+  const [faceImages, setFaceImages] = useState<FaceImageState[]>([
+    { file: null, status: 'idle', message: '' },
+    { file: null, status: 'idle', message: '' },
+    { file: null, status: 'idle', message: '' },
+    { file: null, status: 'idle', message: '' },
+  ]);
+
+
+  const handleCaptureImage = async (index: number) => {
+    if (!webcamRef.current) return;
+
+    const imageSrc = webcamRef.current.getScreenshot();
+    if (!imageSrc) return;
+
+    const res = await fetch(imageSrc);
+    const blob = await res.blob();
+    const file = new File([blob], `face_${index + 1}.jpg`, { type: 'image/jpeg' });
+
+    updateFaceImage(index, { file, status: 'idle', message: 'Image captured' });
+  };
+
+  const handleVerifyFace = async (index: number) => {
+    const face = faceImages[index];
+    if (!face.file || !formData.roll_number) {
+      updateFaceImage(index, { ...face, status: 'error', message: 'Missing image or roll number' });
+      return;
+    }
+
+    const formDataObj = new FormData();
+    formDataObj.append('face', face.file);
+    formDataObj.append('identifier', formData.roll_number);
+    formDataObj.append('id_type', 'student');
+
+    try {
+      const response = await fetch('http://localhost:8000/api/verify-face', {
+        method: 'POST',
+        body: formDataObj,
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.encoded === true) {
+        updateFaceImage(index, { ...face, status: 'verified', message: 'Verified ✅' });
+      } else {
+        updateFaceImage(index, { ...face, status: 'unverified', message: 'Verification failed ❌' });
+      }
+    } catch (error) {
+      updateFaceImage(index, { ...face, status: 'error', message: 'Error verifying image ❌' });
+    }
+  };
+
+  const handleUploadFace = async (index: number) => {
+    const face = faceImages[index];
+    if (!face.file || face.status !== 'verified' || !formData.roll_number) {
+      updateFaceImage(index, { ...face, message: 'Cannot upload: Not verified' });
+      return;
+    }
+
+    const formDataObj = new FormData();
+    formDataObj.append('face', face.file);
+    formDataObj.append('identifier', formData.roll_number);
+    formDataObj.append('id_type', 'student');
+
+    try {
+      updateFaceImage(index, { ...face, status: 'uploading', message: 'Uploading...' });
+
+      const response = await fetch('http://localhost:8000/api/upload-face', {
+        method: 'POST',
+        body: formDataObj,
+      });
+
+      if (!response.ok) throw new Error('Upload failed');
+
+      updateFaceImage(index, { ...face, message: 'Uploaded ✅', status: 'verified' });
+    } catch {
+      updateFaceImage(index, { ...face, message: 'Upload failed ❌', status: 'error' });
+    }
+  };
+
+  const updateFaceImage = (index: number, newState: FaceImageState) => {
+    setFaceImages(prev => {
+      const updated = [...prev];
+      updated[index] = newState;
+      return updated;
+    });
+  };
+
+
   useEffect(() => {
     if (currentOrganization) {
       fetchData();
@@ -135,7 +229,7 @@ const Students: React.FC = () => {
         formDataObj.append('identifier', formData.roll_number); // for students
         formDataObj.append('id_type', 'student');
 
-        const uploadResponse = await fetch('http://51.21.171.26:8000/api/upload-face', {
+        const uploadResponse = await fetch('http://localhost:8000/api/upload-face', {
           method: 'POST',
           body: formDataObj,
         });
@@ -539,9 +633,11 @@ const Students: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
+              </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Face Image
+                    Face Image Check
                   </label>
                   <input
                     type="file"
@@ -565,57 +661,85 @@ const Students: React.FC = () => {
                     {showWebcam ? 'Close Webcam' : 'Capture with Webcam'}
                   </button>
 
-                  {/* Webcam Viewer */}
-                  {showWebcam && (
-                    <div className="mt-2 flex flex-col items-center">
-                      <Webcam
-                        audio={false}
-                        ref={webcamRef}
-                        screenshotFormat="image/jpeg"
-                        width={220}
-                        videoConstraints={{ facingMode: 'user' }}
+                {/* Webcam Viewer */}
+                {showWebcam && (
+                  <div className="mb-4">
+                    <Webcam
+                      audio={false}
+                      ref={webcamRef}
+                      screenshotFormat="image/jpeg"
+                      width={220}
+                      videoConstraints={{ facingMode: 'user' }}
+                    />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {faceImages.map((face, index) => (
+                    <div key={index} className="border p-3 rounded shadow-sm bg-gray-50">
+                      <h4 className="font-medium mb-2">Face Image {index + 1}</h4>
+
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null;
+                          updateFaceImage(index, {
+                            file,
+                            status: 'idle',
+                            message: file ? 'Image selected' : '',
+                          });
+                        }}
+                        className="mb-2"
                       />
-                    <button
-                      type="button"
-                      className="mt-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                      disabled={isProcessing}
-                      onClick={async () => {
-                        if (!webcamRef.current) return;
-                        setIsProcessing(true);
-                        
-                        const imageSrc = webcamRef.current.getScreenshot();
 
-                        if (imageSrc) {
-                          // 🔁 Convert base64 image to Blob
-                          const res = await fetch(imageSrc);
-                          const blob = await res.blob();
+                      <div className="flex gap-2 mb-2">
+                        <button
+                          type="button"
+                          className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+                          onClick={() => handleCaptureImage(index)}
+                        >
+                          Capture
+                        </button>
+                        <button
+                          type="button"
+                          className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm"
+                          onClick={() => handleVerifyFace(index)}
+                        >
+                          Verify
+                        </button>
+                        <button
+                          type="button"
+                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                          onClick={() => handleUploadFace(index)}
+                        >
+                          Upload
+                        </button>
+                      </div>
 
-                          // 📦 Create a File object from Blob
-                          const file = new File(
-                            [blob],
-                            `${formData.roll_number || 'student'}_face.jpg`,
-                            { type: 'image/jpeg' }
-                          );
-
-                          // ✅ Set the face file (don't redeclare)
-                          setFaceFile(file);
-
-                          toast.success('Face image captured from webcam');
-                        }
-
-                        setIsProcessing(false);
-                        setShowWebcam(false);
-                      }}
-                    >
-                      {isProcessing ? 'Processing...' : 'Capture Photo'}
-                    </button>
-
+                      <div className="text-sm">
+                        {face.message && (
+                          <span
+                            className={
+                              face.status === 'verified'
+                                ? 'text-green-600'
+                                : face.status === 'unverified' || face.status === 'error'
+                                ? 'text-red-600'
+                                : 'text-gray-600'
+                            }
+                          >
+                            {face.message}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  ))}
+                </div>
+
+
 
                   {faceUploadLoading && <span className="text-xs text-blue-600">Uploading...</span>}
                 </div>
-              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Address

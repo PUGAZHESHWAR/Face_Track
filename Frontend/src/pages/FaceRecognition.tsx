@@ -20,7 +20,7 @@ const FaceRecognition: React.FC = () => {
     
     if (imageSrc) {
       try {
-        const response = await fetch('http://51.21.171.26:8000/api/recognize-face', {
+        const response = await fetch('http://localhost:8000/api/recognize-face', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: imageSrc })

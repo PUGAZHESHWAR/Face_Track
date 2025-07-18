@@ -553,7 +553,7 @@ async def recognize_face(request: FaceRequest):
         input_encoding = face_encodings[0]
 
         # Compare with known faces
-        tolerance = 0.5
+        tolerance = 0.4
         best_match = None
         best_distance = 1.0
 
@@ -706,3 +706,22 @@ async def upload_face(
     except Exception as e:
         logger.error(f"Upload failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/verify-face")
+async def verify_face(
+    face: UploadFile = File(...),
+    identifier: str = Form(...),
+    id_type: str = Form(...)
+):
+    contents = await face.read()
+    np_arr = np.frombuffer(contents, np.uint8)
+
+    try:
+        image = face_recognition.load_image_file(face.file)
+        encodings = face_recognition.face_encodings(image)
+        if len(encodings) > 0:
+            return {"encoded": True}
+        else:
+            return JSONResponse(status_code=400, content={"encoded": False, "error": "No face detected"})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
