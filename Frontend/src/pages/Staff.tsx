@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import Webcam from 'react-webcam';
 import api from '../context/api'
+import { baseURL } from '../context/api';
 
 const Staff: React.FC = () => {
   const { currentOrganization } = useOrganization();
@@ -79,7 +80,7 @@ const Staff: React.FC = () => {
     
     if (imageSrc) {
       try {
-        const response = await fetch('http://51.21.171.26:5000/api/recognize-face', {
+        const response = await fetch(`${baseURL}/api/recognize-face`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: imageSrc })
