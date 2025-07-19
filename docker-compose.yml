@@ -1,0 +1,30 @@
+services:
+  backend:
+    image: pugazheshwar411docker/face-backend:v1.0.3
+    container_name: B.V3
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+      args:
+        BUILDKIT_INLINE_CACHE: "1"
+      cache_from:
+        - pugazheshwar411docker/face-backend:v1.0.2
+    ports:
+      - "8000:8000"
+    working_dir: /app
+    volumes:
+      - ./Backend:/app
+    restart: unless-stopped
+
+  frontend:
+    image: pugazheshwar411docker/face-frontend:v1.0.3
+    container_name: F.V3
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    working_dir: /app
+    volumes:
+      - ./Frontend:/app
+    restart: unless-stopped
