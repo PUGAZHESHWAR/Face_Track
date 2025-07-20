@@ -1,6 +1,6 @@
 services:
   backend:
-    image: pugazheshwar411docker/face-backend:v1.0.3
+    image: pugazheshwar411docker/face-backend:v1.0.4
     container_name: B.V3
     build:
       context: ./Backend
@@ -8,16 +8,16 @@ services:
       args:
         BUILDKIT_INLINE_CACHE: "1"
       cache_from:
-        - pugazheshwar411docker/face-backend:v1.0.2
+        - pugazheshwar411docker/face-backend:v1.0.3
     ports:
       - "8000:8000"
     working_dir: /app
-    volumes:
-      - ./Backend:/app
+    # volumes:
+    #   - ./Backend:/app
     restart: unless-stopped
 
   frontend:
-    image: pugazheshwar411docker/face-frontend:v1.0.3
+    image: pugazheshwar411docker/face-frontend:v1.0.4
     container_name: F.V3
     build:
       context: ./Frontend
@@ -25,6 +25,6 @@ services:
     ports:
       - "5173:80"
     working_dir: /app
-    volumes:
-      - ./Frontend:/app
+    # volumes:
+    #   - ./Frontend:/app
     restart: unless-stopped
