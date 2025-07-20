@@ -104,7 +104,7 @@ const Students: React.FC = () => {
 
     const formDataObj = new FormData();
     formDataObj.append('face', face.file);
-    formDataObj.append('identifier', formData.roll_number);
+    formDataObj.append('identifier', formData.roll_number+'-'+index);
     formDataObj.append('id_type', 'student');
 
     try {
@@ -229,7 +229,7 @@ const Students: React.FC = () => {
         formDataObj.append('face', faceFile);
         formDataObj.append('identifier', formData.roll_number); // for students
         formDataObj.append('id_type', 'student');
-
+        console.log(formDataObj)
         const uploadResponse = await fetch(`${baseURL}/api/upload-face`, {
           method: 'POST',
           body: formDataObj,

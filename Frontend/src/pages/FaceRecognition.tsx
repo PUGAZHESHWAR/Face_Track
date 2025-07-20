@@ -28,7 +28,7 @@ const FaceRecognition: React.FC = () => {
         });
         
         const data = await response.json();
-        // console.log(data)
+        data.identifier = data.identifier.slice(0, -2);
         if (!response.ok) {
           throw new Error(data.message || 'Recognition failed');
         }
