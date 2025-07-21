@@ -130,7 +130,7 @@ const Staff: React.FC = () => {
         formDataObj.append('identifier', formData.employee_id);
         formDataObj.append('id_type', 'staff');
 
-        const uploadResponse = await fetch('http://51.21.171.26:8000/api/upload-face', {
+        const uploadResponse = await fetch(`${baseURL}/api/upload-face`, {
             method: 'POST',
             body: formDataObj,
         });

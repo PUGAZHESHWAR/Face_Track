@@ -516,8 +516,22 @@ def get_student_by_roll(roll_number: str, db: Session = Depends(get_db)):
     }
     
 # Load known encodings from file (assumed format: { "stu_123": [[enc1], [enc2], ...], ... })
-with open("face-images/face_registry.json", "r") as f:
-    data_dict = json.load(f)
+# with open("face-images/face_registry.json", "r") as f:
+#     data_dict = json.load(f)
+
+face_registry_path = os.path.join(images_path, 'face_registry.json')
+
+# Safe load of face_registry.json
+if os.path.exists(face_registry_path) and os.path.getsize(face_registry_path) > 0:
+    try:
+        with open(face_registry_path, "r") as f:
+            data_dict = json.load(f)
+    except json.JSONDecodeError:
+        data_dict = {}
+        logger.warning("face_registry.json contains invalid JSON. Starting with empty registry.")
+else:
+    data_dict = {}
+
 
 class FaceRequest(BaseModel):
     image: str  # base64 encoded
