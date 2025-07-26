@@ -1,148 +1,202 @@
 import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { GraduationCap, Eye, EyeOff } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { GraduationCap, Eye, EyeOff, User2, Shield } from 'lucide-react';
 
-const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+type UserType = 'student' | 'admin';
+
+const LoginForm: React.FC = () => {
+  const [userType, setUserType] = useState<UserType>('student');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [fullName, setFullName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const { user, signIn, signUp } = useAuth();
+  // Student form state
+  const [studentData, setStudentData] = useState({
+    regNo: '',
+    password: '',
+    fullName: ''
+  });
 
-  if (user) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  // Admin form state
+  const [adminData, setAdminData] = useState({
+    email: '',
+    password: '',
+    fullName: ''
+  });
+
+  const handleUserTypeChange = (type: UserType) => {
+    setUserType(type);
+    setIsSignUp(false);
+    setStudentData({ regNo: '', password: '', fullName: '' });
+    setAdminData({ email: '', password: '', fullName: '' });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      if (isSignUp) {
-        await signUp(fullName,email,password);
-        toast.success('Account created successfully!');
+      // Here you would integrate with your authentication API
+      if (userType === 'student') {
+        if (isSignUp) {
+          console.log('Student Sign Up:', studentData);
+        } else {
+          console.log('Student Login:', { regNo: studentData.regNo, password: studentData.password });
+        }
       } else {
-        await signIn(email, password);
-        toast.success('Signed in successfully!');
+        if (isSignUp) {
+          console.log('Admin Sign Up:', adminData);
+        } else {
+          console.log('Admin Login:', { email: adminData.email, password: adminData.password });
+        }
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || error.message || 'An error occurred');
+      console.error('Authentication Error:', error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4">
+      <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg space-y-6">
+        <div className="flex justify-center">
+          <div className="h-16 w-16 bg-blue-600 rounded-full flex items-center justify-center">
             <GraduationCap className="h-8 w-8 text-white" />
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            {isSignUp ? 'Create your account' : 'Sign in to your account'}
+        </div>
+
+        {/* Role Toggle */}
+        <div className="flex bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => handleUserTypeChange('student')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              userType === 'student' 
+                ? 'bg-blue-600 text-white shadow-sm' 
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            <User2 className="h-4 w-4" />
+            Student
+          </button>
+          <button
+            onClick={() => handleUserTypeChange('admin')}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              userType === 'admin' 
+                ? 'bg-blue-600 text-white shadow-sm' 
+                : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            <Shield className="h-4 w-4" />
+            Admin
+          </button>
+        </div>
+
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">
+            {isSignUp ? 'Create Account' : 'Welcome Back'}
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Educational Institution Management Platform
+          <p className="text-sm text-gray-500">
+            {userType === 'student' ? 'Student Portal Access' : 'Admin Portal Access'}
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            {isSignUp && (
-              <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
-                  Full Name
-                </label>
-                <input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Enter your full name"
-                />
-              </div>
-            )}
-
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {isSignUp && (
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                type="text"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Enter your email"
+                value={userType === 'student' ? studentData.fullName : adminData.fullName}
+                onChange={(e) => {
+                  if (userType === 'student') {
+                    setStudentData(prev => ({ ...prev, fullName: e.target.value }));
+                  } else {
+                    setAdminData(prev => ({ ...prev, fullName: e.target.value }));
+                  }
+                }}
+                placeholder="Enter your full name"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
             </div>
+          )}
 
+          {userType === 'student' ? (
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Registration Number
               </label>
-              <div className="mt-1 relative">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
-                </button>
-              </div>
+              <input
+                type="text"
+                required
+                value={studentData.regNo}
+                onChange={(e) => setStudentData(prev => ({ ...prev, regNo: e.target.value }))}
+                placeholder="Enter your registration number"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                type="email"
+                required
+                value={adminData.email}
+                onChange={(e) => setAdminData(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="Enter your email"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={userType === 'student' ? studentData.password : adminData.password}
+                onChange={(e) => {
+                  if (userType === 'student') {
+                    setStudentData(prev => ({ ...prev, password: e.target.value }));
+                  } else {
+                    setAdminData(prev => ({ ...prev, password: e.target.value }));
+                  }
+                }}
+                placeholder="Enter your password"
+                className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
             </div>
           </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                isSignUp ? 'Create Account' : 'Sign In'
-              )}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex justify-center items-center py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+            ) : isSignUp ? (
+              'Create Account'
+            ) : (
+              'Sign In'
+            )}
+          </button>
 
           <div className="text-center">
             <button
               type="button"
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-blue-600 hover:text-blue-500"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
-              {isSignUp
-                ? 'Already have an account? Sign in'
-                : "Don't have an account? Sign up"}
+              {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign up"}
             </button>
           </div>
         </form>
@@ -151,4 +205,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default LoginForm;
