@@ -12,6 +12,7 @@ from models.student import Student
 from models.organization import Organization
 from models.department import Department
 from models.staff import Staff
+from models.students_login import Students_Login
 from typing import List
 from datetime import date
 from typing import Optional
@@ -247,6 +248,15 @@ class ClassCreate(BaseModel):
 class ClassOut(ClassCreate):
     id: UUID
     created_at: Optional[date] = None
+    
+class StudentCreate(BaseModel):
+    name: str
+    reg_no: str
+    password: str
+
+class StudentLogin(BaseModel):
+    reg_no: str
+    password: str
 
 # REGISTER
 @app.post("/register")
@@ -739,3 +749,33 @@ async def verify_face(
             return JSONResponse(status_code=400, content={"encoded": False, "error": "No face detected"})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+    
+@app.post("/studentsignup")
+def signup(student: StudentCreate, db: Session = Depends(get_db)):
+    existing = db.query(Students_Login).filter_by(reg_no=student.reg_no).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Registration number already exists")
+
+    hashed_pw = hash_password(student.password)
+    new_student = Students_Login(
+        name=student.name,
+        reg_no=student.reg_no,
+        password=hashed_pw
+    )
+    db.add(new_student)
+    db.commit()
+    db.refresh(new_student)
+    return {"message": "Student account created"}
+
+@app.post("/studentlogin")
+def login(data: StudentLogin, db: Session = Depends(get_db)):
+    student = db.query(Students_Login).filter_by(reg_no=data.reg_no).first()
+    if not student or not verify_password(data.password, student.password):
+        raise HTTPException(status_code=401, detail="Invalid registration number or password")
+
+    access_token = create_access_token(data={"sub": student.reg_no})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "student": {"name": student.name, "reg_no": student.reg_no}
+    }
