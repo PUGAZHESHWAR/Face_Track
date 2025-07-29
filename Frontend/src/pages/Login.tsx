@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { GraduationCap, Eye, EyeOff, User2, Shield } from 'lucide-react';
-
+import toast from 'react-hot-toast';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 type UserType = 'student' | 'admin';
 
-const LoginForm: React.FC = () => {
+const Login: React.FC = () => {
   const [userType, setUserType] = useState<UserType>('student');
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { user, signIn, signUp } = useAuth(); // <- useAuth() is a hook
+
+  // 💡 All other hooks declared before return
 
   // Student form state
   const [studentData, setStudentData] = useState({
@@ -22,6 +27,11 @@ const LoginForm: React.FC = () => {
     password: '',
     fullName: ''
   });
+
+    if (user) {
+    console.log('User already logged in:', user);
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleUserTypeChange = (type: UserType) => {
     setUserType(type);
@@ -39,18 +49,27 @@ const LoginForm: React.FC = () => {
       if (userType === 'student') {
         if (isSignUp) {
           console.log('Student Sign Up:', studentData);
+          // await signUp(fullName,email,password);
+          toast.success('Account created successfully!');
         } else {
           console.log('Student Login:', { regNo: studentData.regNo, password: studentData.password });
+          // await signIn(email, password);
+          toast.success('Signed in successfully!');
         }
       } else {
         if (isSignUp) {
           console.log('Admin Sign Up:', adminData);
+        await signUp(adminData.fullName, adminData.email, adminData.password);
+        toast.success('Account created successfully!');
         } else {
           console.log('Admin Login:', { email: adminData.email, password: adminData.password });
+          await signIn(adminData.email, adminData.password);
+          toast.success('Signed in successfully!');
         }
       }
     } catch (error: any) {
       console.error('Authentication Error:', error);
+      toast.error(error?.response?.data?.detail || error.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -205,4 +224,4 @@ const LoginForm: React.FC = () => {
   );
 };
 
-export default LoginForm;
+export default Login;
