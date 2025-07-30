@@ -15,6 +15,8 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
+  Student_signup: (name: string, reg_no: string, password: string) => Promise<void>;
+  Student_signIn: (reg_no: string, password: string) => Promise<void>
   signOut: () => Promise<void>;
   updateProfile: (data: any) => Promise<void>;
 }
@@ -58,6 +60,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+    const Student_signIn = async (reg_no: string, password: string) => {
+    try {
+      const res = await api.post('/studentlogin', { reg_no, password });
+      const { user, token ,access_token} = res.data;
+      console.log('Login successful:', access_token);
+      // setUser(access_token);
+      localStorage.setItem('token', access_token);
+
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // await fetchUserProfile();
+    } catch (err) {
+      console.error('Login failed:', err);
+      throw err;
+    }
+  };
+
 
   const signUp = async (name: string, email: string, password: string) => {
     try {
@@ -68,6 +86,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       const user = res.data.user;
       setUser(user);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        console.error('Signup failed:', err.response?.data || err.message);
+      } else {
+        console.error('Unexpected error:', err);
+      }
+      throw err;
+    }
+  };
+
+    const Student_signup = async (name: string, reg_no: string, password: string) => {
+    try {
+      const res = await api.post('/studentsignup', {
+        name,      // Not full_name
+        reg_no,
+        password,
+      });
+      const user = res.data.user;
+      console.log('Student signup successful:', user);
+      // setUser(user);
     } catch (err) {
       if (axios.isAxiosError(err)) {
         console.error('Signup failed:', err.response?.data || err.message);
@@ -120,6 +158,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signOut,
     updateProfile,
+    Student_signup,
+    Student_signIn
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
