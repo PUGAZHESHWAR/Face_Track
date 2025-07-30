@@ -10,7 +10,7 @@ const Login: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { user, signIn, signUp, Student_signup } = useAuth(); // <- useAuth() is a hook
+  const { user, signIn, signUp, Student_signup, Student_signIn } = useAuth(); // <- useAuth() is a hook
 
   // 💡 All other hooks declared before return
 
@@ -53,8 +53,8 @@ const Login: React.FC = () => {
           toast.success('Account created successfully!');
         } else {
           console.log('Student Login:', { regNo: studentData.regNo, password: studentData.password });
-          // await signIn(email, password);
-          toast.success('Signed in successfully!');
+          await Student_signIn(studentData.regNo, studentData.password);
+          toast.success('Student Signed in successfully!');
         }
       } else {
         if (isSignUp) {

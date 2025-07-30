@@ -16,6 +16,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   Student_signup: (name: string, reg_no: string, password: string) => Promise<void>;
+  Student_signIn: (reg_no: string, password: string) => Promise<void>
   signOut: () => Promise<void>;
   updateProfile: (data: any) => Promise<void>;
 }
@@ -53,6 +54,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       await fetchUserProfile();
+    } catch (err) {
+      console.error('Login failed:', err);
+      throw err;
+    }
+  };
+
+    const Student_signIn = async (reg_no: string, password: string) => {
+    try {
+      const res = await api.post('/login', { reg_no, password });
+      const { user, token ,access_token} = res.data;
+      console.log('Login successful:', access_token);
+      // setUser(access_token);
+      localStorage.setItem('token', access_token);
+
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // await fetchUserProfile();
     } catch (err) {
       console.error('Login failed:', err);
       throw err;
@@ -141,7 +158,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signOut,
     updateProfile,
-    Student_signup
+    Student_signup,
+    Student_signIn
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
