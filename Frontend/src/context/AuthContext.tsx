@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const Student_signIn = async (reg_no: string, password: string) => {
     try {
-      const res = await api.post('/login', { reg_no, password });
+      const res = await api.post('/studentlogin', { reg_no, password });
       const { user, token ,access_token} = res.data;
       console.log('Login successful:', access_token);
       // setUser(access_token);
