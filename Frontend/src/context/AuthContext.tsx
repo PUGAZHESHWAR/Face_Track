@@ -15,6 +15,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
+  Student_signup: (name: string, reg_no: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (data: any) => Promise<void>;
 }
@@ -78,6 +79,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+    const Student_signup = async (name: string, reg_no: string, password: string) => {
+    try {
+      const res = await api.post('/studentsignup', {
+        name,      // Not full_name
+        reg_no,
+        password,
+      });
+      const user = res.data.user;
+      console.log('Student signup successful:', user);
+      // setUser(user);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        console.error('Signup failed:', err.response?.data || err.message);
+      } else {
+        console.error('Unexpected error:', err);
+      }
+      throw err;
+    }
+  };
+
 
 
   const signOut = async () => {
@@ -120,6 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signOut,
     updateProfile,
+    Student_signup
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
