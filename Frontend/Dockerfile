@@ -1,21 +1,27 @@
+# Stage 1: Build Node app
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Copy package files and install dependencies
 COPY package.json package-lock.json* ./
 RUN npm install
 
+# Copy the rest of the source code and build
 COPY . .
-
 RUN npm run build
 
+# Stage 2: Serve with Nginx
 FROM nginx:stable-alpine
 
+# Copy built files from the builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy custom nginx config (optional)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Use template Nginx config that listens on $PORT
+COPY default.conf.template /etc/nginx/conf.d/default.conf.template
 
-EXPOSE 80
+# Expose port 8080 (Cloud Run maps $PORT internally)
+EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"]
+# Replace $PORT in nginx config at runtime and start Nginx
+CMD sh -c "envsubst '\$PORT' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
