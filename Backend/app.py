@@ -248,10 +248,10 @@ class ClassOut(ClassCreate):
     id: UUID
     created_at: Optional[date] = None
     
-class StudentCreate(BaseModel):
-    name: str
-    reg_no: str
-    password: str
+# class StudentCreate(BaseModel):
+#     name: str
+#     reg_no: str
+#     password: str
 
 class StudentLogin(BaseModel):
     reg_no: str
