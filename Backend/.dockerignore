@@ -24,3 +24,4 @@ docker-compose.yml
 
 # Ignore tests if you want (optional)
 tests/
+env.yaml

@@ -1,3 +1,14 @@
 /models/__pycache__
 /__pycache__
 myvenv/
+env.yaml
+.env
+.DS_Store
+.vscode/
+.idea/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.log
+*.sqlite

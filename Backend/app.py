@@ -31,12 +31,11 @@ import re
 from auth import hash_password, verify_password, create_access_token
 
 app = FastAPI(title="Auth API")
-origins = [
-    "http://localhost:5173", 
-    "http://127.0.0.1:5173",
-    "https://nill.com",
-    "*" 
-]
+# origins = [
+#     "http://localhost:5173", 
+#     "http://127.0.0.1:5173",
+#     "https://smart-attendance-mgmt-1049299844333.asia-south2.run.app"
+# ]
 logger = logging.getLogger("uvicorn.error")
 # Face images directory
 images_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'face-images'))
@@ -45,7 +44,7 @@ face_registry_path = os.path.join(images_path, 'face_registry.json')
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,              # Allowed origins
+    allow_origins=["*"],              # Allowed origins
     allow_credentials=True,             # Send cookies/auth headers
     allow_methods=["*"],                # Allow all HTTP methods
     allow_headers=["*"],                # Allow all headers
