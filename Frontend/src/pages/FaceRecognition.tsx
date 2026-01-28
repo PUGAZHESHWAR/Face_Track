@@ -47,7 +47,17 @@ const FaceRecognition: React.FC = () => {
             
            case 'recognized': {
             try {
-                const { data: student } = await api.get(`/students/by-roll/${data.identifier}`);
+
+              const resatt = await fetch(`${baseURL}/api/attendance/mark`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ student_id: data.identifier })
+              });
+              const datacheck = await resatt.json();
+              datacheck.status == "Present" ? toast.success(datacheck.message || 'Attendance marked'):"none";
+
+            
+              const { data: student } = await api.get(`/students/by-roll/${data.identifier}`);
 
                 setRecognitionResult({
                 ...student,
@@ -55,9 +65,9 @@ const FaceRecognition: React.FC = () => {
                 confidence: data.confidence ?? 1,
                 });
 
-                toast.success(`Recognized: ${student.name}`);
+                // toast.success(`Recognized: ${student.name}`);
             } catch (err) {
-                toast.error('Student not found');
+                toast.error('Student not found in the database');
                 setRecognitionResult(null);
             }
             break;

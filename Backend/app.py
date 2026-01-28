@@ -13,6 +13,7 @@ from models.organization import Organization
 from models.department import Department
 from models.staff import Staff
 from models.students_login import Students_Login
+from models.attendance import Attendance
 from typing import List
 from datetime import date
 from typing import Optional
@@ -219,6 +220,9 @@ class DepartmentBase(BaseModel):
     head_of_department: Optional[str] = None
     organization_id: UUID
 
+class AttendanceRequest(BaseModel):
+    student_id: str
+
 class DepartmentCreate(DepartmentBase):
     pass
 
@@ -256,6 +260,10 @@ class ClassOut(ClassCreate):
 class StudentLogin(BaseModel):
     reg_no: str
     password: str
+    
+class AttendanceFilter(BaseModel):
+    date: date
+    status: Optional[str] = None  # Present | Absent | Pending
 
 # REGISTER
 @app.post("/register")
@@ -777,4 +785,102 @@ def login(data: StudentLogin, db: Session = Depends(get_db)):
         "access_token": access_token,
         "token_type": "bearer",
         "student": {"name": student.name, "reg_no": student.reg_no}
+    }
+    
+@app.post("/api/attendance/mark")
+def mark_attendance(data: AttendanceRequest, db: Session = Depends(get_db)):
+
+    today = date.today()
+
+    # Get student
+    student = db.query(Student).filter(
+        Student.roll_number == data.student_id
+    ).first()
+
+    if not student:
+        return {"message": "Student not found"}
+
+    # Check if attendance already marked today
+    existing = db.query(Attendance).filter(
+        Attendance.student_id == student.id,
+        Attendance.date == today
+    ).first()
+
+    if existing:
+        return {
+            "message": "Attendance already marked",
+            "date": today,
+            "status": existing.status,
+            "student_id": student.id
+        }
+
+    # Mark attendance
+    attendance = Attendance(
+        student_id=student.id,
+        date=today,
+        status="Present"
+    )
+    db.add(attendance)
+    db.commit()
+
+    return {
+        "message": "Attendance marked successfully",
+        "date": today,
+        "status": "Present",
+        "student_id": student.id
+    }
+
+@app.post("/api/attendance/fetch")
+def fetch_attendance(
+    data: AttendanceFilter,
+    db: Session = Depends(get_db)
+):
+    selected_date = data.date
+    status = data.status
+
+    # Case 1️⃣ Pending students
+    if status == "Pending":
+        subquery = db.query(Attendance.student_id).filter(
+            Attendance.date == selected_date
+        )
+
+        students = db.query(Student).filter(
+            Student.id.notin_(subquery)
+        ).all()
+
+        return {
+            "date": selected_date,
+            "status": "Pending",
+            "students": [
+                {"id": s.id, "name": s.full_name} for s in students
+            ]
+        }
+
+    # Case 2️⃣ Present / Absent / All
+    query = db.query(
+        Student.id,
+        Student.full_name,
+        Attendance.status
+    ).outerjoin(
+        Attendance,
+        (Student.id == Attendance.student_id) &
+        (Attendance.date == selected_date)
+    )
+
+    if status in ["Present", "Absent"]:
+        query = query.filter(Attendance.status == status)
+
+    result = query.all()
+
+    return {
+        "date": selected_date,
+        "status": status or "All",
+        "students": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "status": r.status or "Pending"
+            }
+            for r in result
+        ]
     }
