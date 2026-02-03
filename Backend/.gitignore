@@ -1,6 +1,6 @@
 /models/__pycache__
 /__pycache__
-myvenv/
+venv/
 env.yaml
 .env
 .DS_Store
